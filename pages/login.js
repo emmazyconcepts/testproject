@@ -2,7 +2,6 @@ import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../lib/firebase";
 import { useRouter } from "next/router";
-import Link from "next/link";
 
 export default function Login() {
   const [email, setEmail] = useState("deemajor230600@gmail.com");
@@ -11,14 +10,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  const API_BASE_URL = "https://api-dev.skite.co";
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError("");
 
     try {
-      console.log("Attempting login with:", { email });
-
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -26,32 +25,79 @@ export default function Login() {
       );
       const user = userCredential.user;
 
-      console.log("Login successful:", user);
-      router.push("/");
-    } catch (error) {
-      console.error("Login error details:", {
-        code: error.code,
-        message: error.message,
-        email: email,
+      const idToken = await user.getIdToken();
+
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          idToken: idToken,
+          role: "user",
+        }),
+        credentials: "include",
       });
 
-      switch (error.code) {
-        case "auth/invalid-credential":
-        case "auth/user-not-found":
-        case "auth/wrong-password":
-          setError("Invalid email or password. Please check your credentials.");
-          break;
-        case "auth/invalid-email":
-          setError("Invalid email address format.");
-          break;
-        case "auth/user-disabled":
-          setError("This account has been disabled.");
-          break;
-        case "auth/too-many-requests":
-          setError("Too many failed attempts. Please try again later.");
-          break;
-        default:
-          setError("Login failed. Please try again.");
+      console.log("Backend response status:", response.status);
+
+      if (!response.ok) {
+        let errorMessage = `Server error: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (parseError) {
+          const text = await response.text();
+          if (text) {
+            errorMessage = `Server returned: ${text.substring(0, 100)}`;
+          }
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+
+      // Redirect to home page
+      router.push("/");
+    } catch (error) {
+      console.error("Login error:", error);
+
+      if (auth.currentUser) {
+        await auth.signOut();
+      }
+
+      if (error.code && error.code.startsWith("auth/")) {
+        switch (error.code) {
+          case "auth/invalid-credential":
+          case "auth/user-not-found":
+          case "auth/wrong-password":
+            setError(
+              "Invalid email or password. Please check your credentials."
+            );
+            break;
+          case "auth/invalid-email":
+            setError("Invalid email address format.");
+            break;
+          case "auth/user-disabled":
+            setError("This account has been disabled.");
+            break;
+          case "auth/too-many-requests":
+            setError("Too many failed attempts. Please try again later.");
+            break;
+          default:
+            setError("Firebase authentication failed. Please try again.");
+        }
+      } else {
+        setError(error.message || "Login failed. Please try again.");
+
+        if (
+          error.message.includes("Failed to fetch") ||
+          error.message.includes("NetworkError")
+        ) {
+          setError(
+            "Cannot connect to backend server. Please check if the server is running and CORS is configured."
+          );
+        }
       }
     } finally {
       setLoading(false);
@@ -65,18 +111,15 @@ export default function Login() {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Sign in to your account
           </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Backend: {API_BASE_URL}
+          </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
               <input
-                id="email"
-                name="email"
                 type="email"
-                autoComplete="email"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Email address"
@@ -85,14 +128,8 @@ export default function Login() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
               <input
-                id="password"
-                name="password"
                 type="password"
-                autoComplete="current-password"
                 required
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
                 placeholder="Password"
@@ -101,12 +138,6 @@ export default function Login() {
               />
             </div>
           </div>
-
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="text-sm text-red-700">{error}</div>
-            </div>
-          )}
 
           <div>
             <button
