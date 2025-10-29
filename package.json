@@ -8,9 +8,11 @@
     "start": "next start"
   },
   "dependencies": {
+    "mediasoup-client": "^3.17.1",
+    "next": "16.0.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "next": "16.0.1"
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
