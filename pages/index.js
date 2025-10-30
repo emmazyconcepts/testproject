@@ -5,7 +5,7 @@ import io from "socket.io-client";
 import { Device } from "mediasoup-client";
 
 export default function VideoCallPage() {
-  const WS_URL = "wss://api-dev.skite.co/mediasoup";
+  const WS_URL = `ws://${process.env.NEXT_PUBLIC_BASE_URL}/mediasoup`;
   const ROOM_ID = "session_68fb900f3f9458d711d01b00";
 
   const [socket, setSocket] = useState(null);
@@ -262,6 +262,11 @@ export default function VideoCallPage() {
             iceParameters: data.iceParameters,
             iceCandidates: data.iceCandidates,
             dtlsParameters: data.dtlsParameters,
+            // iceServers : [
+            //   {
+
+            //   }
+            // ]
           });
 
           transport.on(

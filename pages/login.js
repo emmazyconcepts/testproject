@@ -10,7 +10,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const API_BASE_URL = "https://api-dev.skite.co";
+  const API_BASE_URL = `https://${process.env.NEXT_PUBLIC_BASE_URL}`;
 
   const handleLogin = async (e) => {
     e.preventDefault();
