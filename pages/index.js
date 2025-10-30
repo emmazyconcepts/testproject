@@ -186,6 +186,7 @@ export default function VideoCallPage() {
         }));
 
         console.log("🎬 Remote stream added for producer:", producerId);
+        socketRef.current.emit("consumer-resume", { serverConsumerId: id });
 
         // EVENT: consumer-resumed - Server will resume consumer for us
         // We don't call consumer.resume() here - server handles it
